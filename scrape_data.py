@@ -17,15 +17,22 @@ def scrape_data():
     url = 'https://www.tsp.gov/fund-performance/share-price-history/'
     page = requests.get(url)
 
-    soup = BeautifulSoup(page.content, 'html.parser')
+    soup = BeautifulSoup(page.content, 'lxml')
     results = soup.find_all(id='dynamic-share-price-table')
-    # print(results.prettify())
+    print(results)
 
-    table = soup.find(lambda tag: tag.name == 'table' and tag.has_attr('id') and tag['id'] == "dynamic-share-price-table")
-    # rows = table.findAll(lambda tag: tag.name == 'tr')
+    new_table = pd.DataFrame(columns=range(0, 2), index=[0])  # I know the size
+
+    table = soup.find_all('table')[0] # Grab the first table
+    row_marker = 0
+    for row in table.find_all('tr'):
+        column_marker = 0
+        columns = row.find_all('td')
+        for column in columns:
+            new_table.iat[row_marker, column_marker] = column.get_text()
+            column_marker += 1
 
 
-    results = soup.find_all('tr')
 
     table = soup.find("table", {"title": "dynamic-share-price-table"})
     rows = list()
