@@ -13,9 +13,30 @@ import seaborn as sns
 from scrape_data import scrape_data
 
 
+def import_data(plot_it):
+    current_data = pd.read_csv('Share_Prices.csv')
+    current_data = current_data.set_index(['Date'])
+    current_data.index = pd.to_datetime(current_data.index, format='%m/%d/%Y', infer_datetime_format=True)
+
+    if plot_it:
+        plt.figure()
+        sns.color_palette("bright")
+        sns.lineplot(data=current_data)
+        plt.show()
+
+    contrib = pd.read_csv('Contribution.csv')
+    contrib = contrib.set_index(['Date'])
+    contrib.index = pd.to_datetime(contrib.index, format='%m/%d/%Y', infer_datetime_format=True)
+    shares = contrib.drop(columns=['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total'])
+
+    concat = pd.concat([current_data, shares])
+
+    return current_data, concat
+
+
 def calculate_futures(current_balance, range_days, redistribution, current_data):
     today_price = current_data.tail(1).values
-    today_shares_owned = np.array([0, 0, 0, 0, 0, 0, 0, 1])
+    today_shares_owned = current_data.tail(10).values  # TODO: this is just a placeholder. Fix is
     today_fund_value = today_shares_owned * today_price
     today_balance = sum(today_fund_value)
     current_distribution = today_fund_value / today_balance
@@ -46,15 +67,13 @@ def get_today_stats(current_data):
     current_distribution = today_fund_value/today_balance
 
 
-def main():
-    current_data = pd.read_csv('Share_Prices.csv')
-    current_data = current_data.set_index(['Date'])
-    current_data.index = pd.to_datetime(current_data.index, format='%m/%d/%Y', infer_datetime_format=True)
+def monthly_gain_loss(current_data):
+    monthly_data = current_data.resample('M').sum
+    return monthly_data
 
-    plt.figure()
-    sns.color_palette("bright")
-    sns.lineplot(data=current_data)
-    plt.show()
+
+def main():
+    current_prices, contribution = import_data(False)
 
     # new_data = scrape_data()
     '''new_data = new_data.rename(columns={new_data.columns[0]: 'DATE', new_data.columns[1]: 'L-INC',
@@ -69,15 +88,20 @@ def main():
     # updated_data.to_csv('Share_Prices.csv', index=False)
 
     # L 2055, L 2060, L 2065, G FUND, F FUND, C FUND, S FUND, I FUND
-    redistribution_1 = np.array([0, 0, 0, 0, 0, 0, 0, 1])
+    redistribution_1 = np.zeros([15])
+    redistribution_1[14] = 1
     redistribution_2 = [0, 0, 0, 0, 0, 0, 1, 0]
     redistribution_3 = [0, 0, 0, 0, 0, 1, 0, 0]
     redistribution_4 = [0, 0, 1, 0, 0, 1, 0, 0]
 
-    current_balance = 1000
+    '''current_balance = 1000
     for redis in [redistribution_1]:
-        for days in [len(current_data), 15, 30, 280]:
-            calculate_futures(current_balance, days, redis, current_data)
+        for days in [len(current_prices), 15, 30, 280]:
+            calculate_futures(current_balance, days, redis, current_prices)'''
+
+    print(current_prices.tail())
+    piv = monthly_gain_loss(current_prices)
+    print(piv.tail())
 
 
 if __name__ == '__main__':
