@@ -75,18 +75,6 @@ def monthly_gain_loss(current_data):
 def main():
     current_prices, contribution = import_data(False)
 
-    # new_data = scrape_data()
-    '''new_data = new_data.rename(columns={new_data.columns[0]: 'DATE', new_data.columns[1]: 'L-INC',
-                                            new_data.columns[2]: 'L 2020', new_data.columns[3]: 'L 2030',
-                                            new_data.columns[4]: 'L 2040', new_data.columns[5]: 'L 2050',
-                                            new_data.columns[6]: 'G FUND', new_data.columns[7]: 'F FUND',
-                                            new_data.columns[8]: 'C FUND', new_data.columns[9]: 'S FUND',
-                                            new_data.columns[10]: 'I FUND'})'''
-
-    # new_data['DATE'] = pd.to_datetime(new_data['DATE'], format='%m/%d/%Y', infer_datetime_format=True)
-    # updated_data = pd.concat([new_data, current_data], ignore_index=True)
-    # updated_data.to_csv('Share_Prices.csv', index=False)
-
     # L 2055, L 2060, L 2065, G FUND, F FUND, C FUND, S FUND, I FUND
     redistribution_1 = np.zeros([15])
     redistribution_1[14] = 1

@@ -1,7 +1,7 @@
 """
 TSP_analysis.py
 
-Author: Trey Morris
+Author: Kelly Harnish
 Date:   18 October 2020
 
 """
