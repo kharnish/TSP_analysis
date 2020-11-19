@@ -31,23 +31,19 @@ def import_data(plot_it):
 
     concat = pd.concat([current_data, shares])
 
-    return current_data, concat
+    return current_data, shares
 
 
-def calculate_futures(current_balance, range_days, redistribution, current_data):
-    today_price = current_data.tail(1).values
-    today_shares_owned = current_data.tail(10).values  # TODO: this is just a placeholder. Fix is
-    today_fund_value = today_shares_owned * today_price
-    today_balance = sum(today_fund_value)
-    current_distribution = today_fund_value / today_balance
+def calculate_futures(current_balance, today_shares_owned, history, range_days, redistribution):
+    today_fund_value = today_shares_owned * history.iloc[0]
+    current_distribution = today_fund_value / current_balance
 
-    range_max_price = np.array([max(current_data['L 2055'][-range_days:]), max(current_data['L 2060'][-range_days:]),
-                                max(current_data['L 2065'][-range_days:]), max(current_data['G FUND'][-range_days:]),
-                                max(current_data['F FUND'][-range_days:]), max(current_data['C FUND'][-range_days:]),
-                                max(current_data['S FUND'][-range_days:]), max(current_data['I FUND'][-range_days:])])
+    range_max_price = []
+    for account in history:
+        range_max_price.append(max(history[account][:range_days]))
 
-    new_fund_distribution = redistribution * current_balance
-    new_shares_after_distribution = new_fund_distribution/today_shares_owned
+    new_fund_distribution = redistribution * current_balance  # move dollar balance to new redistribution
+    new_shares_after_distribution = new_fund_distribution/history.iloc[0]
 
     new_share_range_max_price = new_shares_after_distribution * range_max_price
     potential_range_gain_loss = new_share_range_max_price - new_fund_distribution
@@ -59,36 +55,35 @@ def calculate_futures(current_balance, range_days, redistribution, current_data)
     return potential_total, total_gain_loss
 
 
-def get_today_stats(current_data):
-    today_price = current_data.tail(1).values
-    today_shares_owned = np.array([0, 0, 0, 0, 0, 0, 0, 1])
-    today_fund_value = today_shares_owned * today_price
-    today_balance = sum(today_fund_value)
-    current_distribution = today_fund_value/today_balance
-
-
 def monthly_gain_loss(current_data):
     monthly_data = current_data.resample('M').sum
     return monthly_data
 
 
 def main():
-    current_prices, contribution = import_data(False)
+    prices_history, contrib_shares = import_data(False)
+
+    current_shares = []
+    for account in contrib_shares:
+        current_shares.append(sum(contrib_shares[account]))
+    current_fund_value = current_shares * prices_history.iloc[0]
+    current_balance = sum(current_fund_value)
+    current_distribution = current_fund_value/current_balance
 
     # L 2055, L 2060, L 2065, G FUND, F FUND, C FUND, S FUND, I FUND
-    redistribution_1 = np.zeros([15])
-    redistribution_1[14] = 1
-    redistribution_2 = [0, 0, 0, 0, 0, 0, 1, 0]
+    redis_1 = np.zeros([15])
+    redis_1[14] = 1
+    redis_2 = np.zeros([15])
+    redis_2[13] = 1
     redistribution_3 = [0, 0, 0, 0, 0, 1, 0, 0]
     redistribution_4 = [0, 0, 1, 0, 0, 1, 0, 0]
 
-    '''current_balance = 1000
-    for redis in [redistribution_1]:
-        for days in [len(current_prices), 15, 30, 280]:
-            calculate_futures(current_balance, days, redis, current_prices)'''
+    for redis in [redis_1, redis_2]:
+        for days in [15, 30, 280, len(prices_history)]:
+            potential_total, total_gain_loss = calculate_futures(current_balance, current_shares, prices_history, days, redis)
+            print(potential_total, total_gain_loss)
 
-    print(current_prices.tail())
-    piv = monthly_gain_loss(current_prices)
+    piv = monthly_gain_loss(prices_history)
     print(piv.tail())
 
 
