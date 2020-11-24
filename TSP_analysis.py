@@ -5,12 +5,12 @@ Author: Kelly Harnish
 Date:   18 October 2020
 
 This file processes past TSP data to determine the best steps for future decisions.
+Obtain current price data from https://www.tsp.gov/fund-performance/share-price-history/
 """
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
-from scrape_data import scrape_data
 
 
 def import_data(plot_it):
@@ -39,8 +39,10 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
     current_distribution = today_fund_value / current_balance
 
     range_max_price = []
+    overall_max_price = []
     for account in history:
         range_max_price.append(max(history[account][:range_days]))
+        overall_max_price.append(max(history[account][:]))
 
     new_fund_distribution = redistribution * current_balance  # move dollar balance to new redistribution
     new_shares_after_distribution = new_fund_distribution/history.iloc[0]
@@ -48,11 +50,14 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
     new_share_range_max_price = new_shares_after_distribution * range_max_price
     potential_range_gain_loss = new_share_range_max_price - new_fund_distribution
     potential_total = sum(new_share_range_max_price)
-    total_gain_loss = sum(potential_range_gain_loss)
+    total_gain_loss = potential_total - current_balance
 
-    range_high_current_distribution = total_gain_loss - current_balance
+    current_shares_at_range_max_price = today_shares_owned * range_max_price
+    tot = sum(current_shares_at_range_max_price)
+    est_gain_loss = tot - current_balance
+    current_distrib_v_scenario = total_gain_loss - est_gain_loss
 
-    return potential_total, total_gain_loss
+    return current_distrib_v_scenario
 
 
 def monthly_gain_loss(current_data):
@@ -66,25 +71,34 @@ def main():
     current_shares = []
     for account in contrib_shares:
         current_shares.append(sum(contrib_shares[account]))
+    current_shares = np.array(current_shares)
     current_fund_value = current_shares * prices_history.iloc[0]
     current_balance = sum(current_fund_value)
     current_distribution = current_fund_value/current_balance
 
+    # 7       8       9       10      11      12      13      14
     # L 2055, L 2060, L 2065, G FUND, F FUND, C FUND, S FUND, I FUND
-    redis_1 = np.zeros([15])
-    redis_1[14] = 1
-    redis_2 = np.zeros([15])
-    redis_2[13] = 1
-    redistribution_3 = [0, 0, 0, 0, 0, 1, 0, 0]
-    redistribution_4 = [0, 0, 1, 0, 0, 1, 0, 0]
+    redistribution = np.zeros(([10, 15]))
+    redistribution[0, 14] = 1
+    redistribution[1, 13] = 1
+    redistribution[2, 12] = 1
+    redistribution[3, 9] = 1
+    redistribution[4, 8] = 1
+    redistribution[5, 7] = 1
+    redistribution[6, 12:14] = 1/3
+    redistribution[7, 12], redistribution[7, 14] = 0.5, 0.5
+    redistribution[8, 12:13] = 0.5
 
-    for redis in [redis_1, redis_2]:
+    ranges = [15, 30, 280, len(prices_history)]
+    df = pd.DataFrame(columns=['Redistribution', 'Range: '+str(ranges[0])+' days', 'Range: '+str(ranges[1])+' days', 'Range: '+str(ranges[2])+' days', 'Over All Time'])
+    for i in range(len(redistribution)):
+        redis = redistribution[i, :]
+        temp = [i]
         for days in [15, 30, 280, len(prices_history)]:
-            potential_total, total_gain_loss = calculate_futures(current_balance, current_shares, prices_history, days, redis)
-            print(potential_total, total_gain_loss)
+            temp.append(calculate_futures(current_balance, current_shares, prices_history, days, redis))
+        df = df.append(pd.Series(temp, index=df.columns), ignore_index=True)
 
     piv = monthly_gain_loss(prices_history)
-    print(piv.tail())
 
 
 if __name__ == '__main__':
