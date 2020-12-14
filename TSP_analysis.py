@@ -61,7 +61,16 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
 
 
 def monthly_gain_loss(current_data):
-    monthly_data = current_data.resample('M').sum
+    months = current_data.groupby(pd.Grouper(freq='MS'))
+    monthly_data = pd.DataFrame(columns=current_data.columns)
+    losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    for mo in months:
+        diff = (mo[1].iloc[-1] - mo[1].iloc[0]).rename(mo[0])
+        mon = str(diff.name.month_name()[:3])
+        for index, val in diff.items():
+            if val < 0:
+                losses_monthly.loc[mon, index] = losses_monthly.loc[mon, index] + 1
+
     return monthly_data
 
 
@@ -99,6 +108,7 @@ def main():
         df = df.append(pd.Series(temp, index=df.columns), ignore_index=True)
 
     piv = monthly_gain_loss(prices_history)
+    print(piv)
 
 
 if __name__ == '__main__':
