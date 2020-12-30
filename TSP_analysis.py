@@ -4,8 +4,8 @@ TSP_analysis.py
 Author: Kelly Harnish
 Date:   18 October 2020
 
-This file processes past TSP data to determine the best steps for future decisions.
-Obtain current price data from https://www.tsp.gov/fund-performance/share-price-history/
+This file processes past TSP data to determine the best steps for future financial decisions.
+Obtain most current share price CSV from https://www.tsp.gov/fund-performance/share-price-history/
 """
 import numpy as np
 import pandas as pd
@@ -13,28 +13,42 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
-def import_data(plot_it):
-    current_data = pd.read_csv('Share_Prices.csv')
+def import_data():
+    """ Import share price and contribution history and format into dataframes. """
+    current_data = pd.read_csv('share_prices.csv')
     current_data = current_data.set_index(['Date'])
     current_data.index = pd.to_datetime(current_data.index, format='%m/%d/%Y', infer_datetime_format=True)
 
-    if plot_it:
-        plt.figure()
-        sns.color_palette("bright")
-        sns.lineplot(data=current_data)
-        plt.show()
-
-    contrib = pd.read_csv('Contribution.csv')
+    contrib = pd.read_csv('contributions.csv')
     contrib = contrib.set_index(['Date'])
     contrib.index = pd.to_datetime(contrib.index, format='%m/%d/%Y', infer_datetime_format=True)
     shares = contrib.drop(columns=['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total'])
 
     concat = pd.concat([current_data, shares])
 
-    return current_data, shares
+    current_shares = []
+    for account in shares:
+        current_shares.append(sum(shares[account]))
+    current_shares = np.array(current_shares)
+    current_fund_value = current_shares * current_data.iloc[0]
+    current_balance = sum(current_fund_value)
+    current_distribution = current_fund_value / current_balance
+
+    return current_data, shares, current_shares, current_fund_value, current_balance
+
+
+def plot_history(data):
+    """ Plot the share price history data from 2014 to current. """
+    plt.figure(figsize=(15, 9))
+    plt.grid()
+    sns.color_palette("bright")
+    sns.lineplot(data=data)
+    plt.savefig("share_prices.png")
+    plt.show()
 
 
 def calculate_futures(current_balance, today_shares_owned, history, range_days, redistribution):
+    """ Calculate future distributions of TSP funds. """
     today_fund_value = today_shares_owned * history.iloc[0]
     current_distribution = today_fund_value / current_balance
 
@@ -61,32 +75,33 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
 
 
 def monthly_gain_loss(current_data):
+    """ Calculate monthly gains/losses of each fund over all years. """
     months = current_data.groupby(pd.Grouper(freq='MS'))
-    monthly_data = pd.DataFrame(columns=current_data.columns)
     losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     for mo in months:
         diff = (mo[1].iloc[-1] - mo[1].iloc[0]).rename(mo[0])
-        mon = str(diff.name.month_name()[:3])
+        mon_str = str(diff.name.month_name()[:3])
         for index, val in diff.items():
             if val < 0:
-                losses_monthly.loc[mon, index] = losses_monthly.loc[mon, index] + 1
+                losses_monthly.loc[mon_str, index] = losses_monthly.loc[mon_str, index] + 1
 
-    return monthly_data
+    return losses_monthly
 
 
 def main():
-    prices_history, contrib_shares = import_data(False)
+    prices_history, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
+    # plot_history(prices_history)
+    print("Current total fund value:  $%.2f" % current_balance)
 
-    current_shares = []
-    for account in contrib_shares:
-        current_shares.append(sum(contrib_shares[account]))
-    current_shares = np.array(current_shares)
-    current_fund_value = current_shares * prices_history.iloc[0]
-    current_balance = sum(current_fund_value)
-    current_distribution = current_fund_value/current_balance
-
-    # 7       8       9       10      11      12      13      14
-    # L 2055, L 2060, L 2065, G FUND, F FUND, C FUND, S FUND, I FUND
+    # Test different distributions to see the possible gains/losses in switching to them, using the number code:
+    # 7  = L 2055
+    # 8  = L 2060
+    # 9  = L 2065
+    # 10 = G FUND
+    # 11 = F FUND
+    # 12 = C FUND
+    # 13 = S FUND
+    # 14 = I FUND
     redistribution = np.zeros(([10, 15]))
     redistribution[0, 14] = 1
     redistribution[1, 13] = 1
@@ -106,9 +121,10 @@ def main():
         for days in [15, 30, 280, len(prices_history)]:
             temp.append(calculate_futures(current_balance, current_shares, prices_history, days, redis))
         df = df.append(pd.Series(temp, index=df.columns), ignore_index=True)
+    # TODO: find a clean way to output the different distribution results
 
-    piv = monthly_gain_loss(prices_history)
-    print(piv)
+    gain_loss = monthly_gain_loss(prices_history)
+    print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
 if __name__ == '__main__':

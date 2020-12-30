@@ -1,3 +1,5 @@
-# TSP_analysis
+# TSP Fund Analysis
 
-This is where I put all the code and stuff to determine the best decisions to do with my TSP.
+Some code to help determine the best way to invest your TSP funds. It does require some manual inputs in `share_prices.csv` and `contributions.csv` (see `contributions_example.csv` for formatting your own contribution information.)
+
+*I am in no way an expert nor liable; use at your own discression.*
