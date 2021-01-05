@@ -57,7 +57,6 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
     for account in history:
         range_max_price.append(max(history[account][:range_days]))
         overall_max_price.append(max(history[account][:]))
-
     new_fund_distribution = redistribution * current_balance  # move dollar balance to new redistribution
     new_shares_after_distribution = new_fund_distribution/history.iloc[0]
 
@@ -72,6 +71,32 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
     current_distrib_v_scenario = total_gain_loss - est_gain_loss
 
     return current_distrib_v_scenario
+
+
+def find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history):
+    df = pd.DataFrame(columns=['Redistribution', str(ranges[0])+' days', str(ranges[1])+' days', str(ranges[2])+' days', 'Over All Time'])
+    for i in range(len(redistribution)):
+        redis = redistribution[i, :]
+        temp = [i]
+        for days in [15, 30, 280, len(prices_history)]:
+            temp.append(calculate_futures(current_balance, current_shares, prices_history, days, redis))
+        df = df.append(pd.Series(temp, index=df.columns), ignore_index=True)
+    df = df.set_index('Redistribution')
+
+    """ Plot the share price history data from 2014 to current. """
+    plt.figure(figsize=(15, 9))
+    plt.grid()
+    sns.color_palette("bright")
+    width = 0.2
+    plt.bar(df.index - width*1.5, df['15 days'], width)
+    plt.bar(df.index - width/2, df['30 days'], width)
+    plt.bar(df.index + width/2, df['280 days'], width)
+    plt.bar(df.index + width*1.5, df['Over All Time'], width)
+    plt.legend(['15 days', '30 days', '280 days', 'Over All Time'])
+    # plt.savefig("share_prices.png")
+    plt.show()
+
+    return df
 
 
 def monthly_gain_loss(current_data):
@@ -114,16 +139,13 @@ def main():
     redistribution[8, 12:13] = 0.5
 
     ranges = [15, 30, 280, len(prices_history)]
-    df = pd.DataFrame(columns=['Redistribution', 'Range: '+str(ranges[0])+' days', 'Range: '+str(ranges[1])+' days', 'Range: '+str(ranges[2])+' days', 'Over All Time'])
-    for i in range(len(redistribution)):
-        redis = redistribution[i, :]
-        temp = [i]
-        for days in [15, 30, 280, len(prices_history)]:
-            temp.append(calculate_futures(current_balance, current_shares, prices_history, days, redis))
-        df = df.append(pd.Series(temp, index=df.columns), ignore_index=True)
-    # TODO: find a clean way to output the different distribution results
+    df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
+    print('\n\"What-if\" Resistribution Gains and Losses')
+    print(df)
+
 
     gain_loss = monthly_gain_loss(prices_history)
+    print('\nMonthly Gains and Losses')
     print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
