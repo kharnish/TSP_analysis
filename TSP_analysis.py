@@ -41,7 +41,7 @@ def plot_history(data):
     """ Plot the share price history data from 2014 to current. """
     plt.figure(figsize=(15, 9))
     plt.grid()
-    sns.color_palette("bright")
+    sns.color_palette("deep")
     sns.lineplot(data=data)
     plt.savefig("share_prices.png")
     plt.show()
@@ -81,22 +81,25 @@ def find_what_if_redis(ranges, redistribution, current_balance, current_shares, 
         for days in [15, 30, 280, len(prices_history)]:
             temp.append(calculate_futures(current_balance, current_shares, prices_history, days, redis))
         df = df.append(pd.Series(temp, index=df.columns), ignore_index=True)
-    df = df.set_index('Redistribution')
+    return df.set_index('Redistribution')
 
+
+def plot_what_if(df):
     """ Plot the share price history data from 2014 to current. """
     plt.figure(figsize=(15, 9))
-    plt.grid()
-    sns.color_palette("bright")
+    plt.rc('axes', axisbelow=True)
+    plt.grid(axis='y')
     width = 0.2
     plt.bar(df.index - width*1.5, df['15 days'], width)
     plt.bar(df.index - width/2, df['30 days'], width)
     plt.bar(df.index + width/2, df['280 days'], width)
     plt.bar(df.index + width*1.5, df['Over All Time'], width)
+    plt.xticks(np.arange(min(df.index), max(df.index) + 1, 1))
+    plt.xlabel('Redistribution')
+    plt.ylabel('Gain/Loss ($)')
     plt.legend(['15 days', '30 days', '280 days', 'Over All Time'])
-    # plt.savefig("share_prices.png")
+    plt.savefig("redistribution.png")
     plt.show()
-
-    return df
 
 
 def monthly_gain_loss(current_data):
@@ -115,7 +118,7 @@ def monthly_gain_loss(current_data):
 
 def main():
     prices_history, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
-    # plot_history(prices_history)
+    plot_history(prices_history)
     print("Current total fund value:  $%.2f" % current_balance)
 
     # Test different distributions to see the possible gains/losses in switching to them, using the number code:
@@ -140,9 +143,9 @@ def main():
 
     ranges = [15, 30, 280, len(prices_history)]
     df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
+    plot_what_if(df)
     print('\n\"What-if\" Resistribution Gains and Losses')
     print(df)
-
 
     gain_loss = monthly_gain_loss(prices_history)
     print('\nMonthly Gains and Losses')
