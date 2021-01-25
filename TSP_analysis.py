@@ -43,7 +43,7 @@ def plot_history(data):
     plt.grid()
     sns.color_palette("deep")
     sns.lineplot(data=data)
-    plt.savefig("share_prices.png")
+    plt.savefig("share_prices.png", bbox_inches='tight', pad_inches=0)
     plt.show()
 
 
@@ -98,7 +98,7 @@ def plot_what_if(df):
     plt.xlabel('Redistribution')
     plt.ylabel('Gain/Loss ($)')
     plt.legend(['15 days', '30 days', '280 days', 'Over All Time'])
-    plt.savefig("redistribution.png")
+    plt.savefig("redistribution.png", bbox_inches='tight', pad_inches=0)
     plt.show()
 
 
@@ -118,7 +118,7 @@ def monthly_gain_loss(current_data):
 
 def main():
     prices_history, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
-    plot_history(prices_history)
+    # plot_history(prices_history)
     print("Current total fund value:  $%.2f" % current_balance)
 
     # Test different distributions to see the possible gains/losses in switching to them, using the number code:
