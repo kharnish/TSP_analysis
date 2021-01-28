@@ -22,8 +22,8 @@ def import_data():
     contrib = pd.read_csv('contributions.csv')
     contrib = contrib.set_index(['Date'])
     contrib.index = pd.to_datetime(contrib.index, format='%m/%d/%Y', infer_datetime_format=True)
+    contributions = contrib[['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total']]
     shares = contrib.drop(columns=['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total'])
-
     concat = pd.concat([current_data, shares])
 
     current_shares = []
@@ -34,7 +34,7 @@ def import_data():
     current_balance = sum(current_fund_value)
     current_distribution = current_fund_value / current_balance
 
-    return current_data, shares, current_shares, current_fund_value, current_balance
+    return current_data, contributions, shares, current_shares, current_fund_value, current_balance
 
 
 def plot_history(data):
@@ -117,9 +117,13 @@ def monthly_gain_loss(current_data):
 
 
 def main():
-    prices_history, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
+    prices_history, contribs, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
     # plot_history(prices_history)
     print("Current total fund value:  $%.2f" % current_balance)
+    my_input = np.sum(contribs['Traditional']) + np.sum(contribs['Roth'])
+    all_input = np.sum(contribs['Total'])
+    print('My Gain: \t\t$%.2f' % (current_balance - my_input))
+    print('Total Gain: \t$%.2f' % (current_balance - all_input))
 
     # Test different distributions to see the possible gains/losses in switching to them, using the number code:
     # 7  = L 2055
@@ -143,13 +147,13 @@ def main():
 
     ranges = [15, 30, 280, len(prices_history)]
     df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
-    plot_what_if(df)
+    # plot_what_if(df)
     print('\n\"What-if\" Resistribution Gains and Losses')
     print(df)
 
     gain_loss = monthly_gain_loss(prices_history)
-    print('\nMonthly Gains and Losses')
-    print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    # print('\nMonthly Gains and Losses')
+    # print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
 if __name__ == '__main__':
