@@ -6,6 +6,7 @@ Date:   18 October 2020
 
 This file processes past TSP data to determine the best steps for future financial decisions.
 Obtain most current share price CSV from https://www.tsp.gov/fund-performance/share-price-history/
+See personal TSP information at https://www.tsp.gov/
 """
 import numpy as np
 import pandas as pd
@@ -43,8 +44,15 @@ def plot_history(data):
     plt.grid()
     sns.color_palette("deep")
     sns.lineplot(data=data)
-    plt.savefig("share_prices.png", bbox_inches='tight', pad_inches=0)
-    plt.show()
+    plt.savefig("share_prices_all_time.png", bbox_inches='tight', pad_inches=0)
+
+    recent = data[:data.first_valid_index()-pd.Timedelta(weeks=52)]
+    plt.figure(figsize=(15, 9))
+    plt.grid()
+    sns.color_palette("deep")
+    sns.lineplot(data=recent)
+    plt.savefig("share_prices_past_year.png", bbox_inches='tight', pad_inches=0)
+    # plt.show()
 
 
 def calculate_futures(current_balance, today_shares_owned, history, range_days, redistribution):
@@ -118,7 +126,7 @@ def monthly_gain_loss(current_data):
 
 def main():
     prices_history, contribs, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
-    # plot_history(prices_history)
+    plot_history(prices_history)
     print("Current total fund value:  $%.2f" % current_balance)
     my_input = np.sum(contribs['Traditional']) + np.sum(contribs['Roth'])
     all_input = np.sum(contribs['Total'])
@@ -152,8 +160,8 @@ def main():
     print(df)
 
     gain_loss = monthly_gain_loss(prices_history)
-    # print('\nMonthly Gains and Losses')
-    # print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    print('\nMonthly Gains and Losses')
+    print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
 if __name__ == '__main__':
