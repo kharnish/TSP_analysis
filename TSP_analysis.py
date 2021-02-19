@@ -4,7 +4,7 @@ TSP_analysis.py
 Author: Kelly Harnish
 Date:   18 October 2020
 
-This file processes past TSP data to determine the best steps for future financial decisions.
+This file processes past TSP data to determine the best steps for your future financial decisions.
 Obtain most current share price CSV from https://www.tsp.gov/fund-performance/share-price-history/
 See personal TSP information at https://www.tsp.gov/
 """
@@ -127,7 +127,7 @@ def monthly_gain_loss(current_data):
 def main():
     prices_history, contribs, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
     plot_history(prices_history)
-    print("Current total fund value:  $%.2f" % current_balance)
+    print("Total fund value:  $%.2f" % current_balance)
     my_input = np.sum(contribs['Traditional']) + np.sum(contribs['Roth'])
     all_input = np.sum(contribs['Total'])
     print('My Gain: \t\t$%.2f' % (current_balance - my_input))
@@ -160,8 +160,8 @@ def main():
     print(df)
 
     gain_loss = monthly_gain_loss(prices_history)
-    print('\nMonthly Gains and Losses')
-    print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    # print('\nMonthly Gains and Losses')
+    # print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
 if __name__ == '__main__':
