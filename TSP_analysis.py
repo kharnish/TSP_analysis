@@ -155,7 +155,7 @@ def main():
 
     ranges = [15, 30, 280, len(prices_history)]
     df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
-    # plot_what_if(df)
+    plot_what_if(df)
     print('\n\"What-if\" Resistribution Gains and Losses')
     print(df)
 
