@@ -110,14 +110,33 @@ def plot_what_if(df):
     plt.show()
 
 
-def monthly_gain_loss(current_data):
+def gain_loss_whole_month(current_data):
     """ Calculate monthly gains/losses of each fund over all years. """
     months = current_data.groupby(pd.Grouper(freq='MS'))
     losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     for mo in months:
+        # Per month per year, subtract final value from starting value
         diff = (mo[1].iloc[-1] - mo[1].iloc[0]).rename(mo[0])
         mon_str = str(diff.name.month_name()[:3])
         for index, val in diff.items():
+            if val < 0:
+                losses_monthly.loc[mon_str, index] = losses_monthly.loc[mon_str, index] + 1
+
+    return losses_monthly
+
+
+def gain_loss_month_daily(current_data):
+    """ Calculate monthly sum of daily gains/losses of each fund over all years. """
+    months = current_data.groupby(pd.Grouper(freq='MS'))
+    losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    for mo in months:
+        # Per month per year, sum daily gains/losses
+        monthly_sum = np.zeros((mo[1].shape[1],))
+        for i in range(mo[1].shape[0] - 1):
+            # loop over all days in month, except last day
+            monthly_sum = monthly_sum + (mo[1].iloc[i+1] - mo[1].iloc[i])
+        mon_str = str(mo[0].month_name()[:3])
+        for index, val in monthly_sum.items():
             if val < 0:
                 losses_monthly.loc[mon_str, index] = losses_monthly.loc[mon_str, index] + 1
 
@@ -159,9 +178,12 @@ def main():
     print('\n\"What-if\" Resistribution Gains and Losses')
     print(df)
 
-    gain_loss = monthly_gain_loss(prices_history)
-    # print('\nMonthly Gains and Losses')
-    # print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    gain_loss = gain_loss_whole_month(prices_history)
+    print('\nWhole Month Monthly Losses')
+    print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    gain_loss2 = gain_loss_month_daily(prices_history)
+    print('\nDaily Sum Monthly Losses')
+    print(gain_loss2[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
 if __name__ == '__main__':
