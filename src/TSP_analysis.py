@@ -10,8 +10,6 @@ See personal TSP information at https://www.tsp.gov/
 """
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-# import seaborn as sns
 import plotly.graph_objects as go
 
 
@@ -55,18 +53,18 @@ def plot_history(data):
                      showline=True, mirror=True, linewidth=1, linecolor='black',
                      zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
                      showgrid=True, gridwidth=1, gridcolor='lightgrey')
-    fig.update_yaxes(title_text="Share Price (USD)",
+    fig.update_yaxes(title_text="Share Price ($ USD)",
                      showline=True,  mirror=True, linewidth=1, linecolor='black',
                      zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
                      showgrid=True, gridwidth=1, gridcolor='lightgrey')
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-        font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)')
+                      font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
+                      margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
     try:
         fig.write_image('share_prices_all_time.png', height=700, width=900, engine='kaleido')
     except TypeError:
         print('Could not write to static file')
     fig.write_html('share_prices_all_time.html')
-    fig.show()
 
     recent = data[:data.first_valid_index() - pd.Timedelta(weeks=52)]
     fig = go.Figure()
@@ -76,12 +74,13 @@ def plot_history(data):
                      showline=True, mirror=True, linewidth=1, linecolor='black',
                      zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
                      showgrid=True, gridwidth=1, gridcolor='lightgrey')
-    fig.update_yaxes(title_text="Share Price (USD)",
+    fig.update_yaxes(title_text="Share Price ($ USD)",
                      showline=True, mirror=True, linewidth=1, linecolor='black',
                      zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
                      showgrid=True, gridwidth=1, gridcolor='lightgrey')
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-        font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)')
+                      font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
+                      margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
     try:
         fig.write_image('share_prices_past_year.png', height=700, width=900, engine='kaleido')
     except TypeError:
@@ -139,20 +138,28 @@ def plot_what_if(df):
     :param df: dataframe of share price history
     :return:
     """
-    plt.figure(figsize=(15, 9))
-    plt.rc('axes', axisbelow=True)
-    plt.grid(axis='y')
-    width = 0.2
-    plt.bar(df.index - width*1.5, df['15 days'], width)
-    plt.bar(df.index - width/2, df['30 days'], width)
-    plt.bar(df.index + width/2, df['280 days'], width)
-    plt.bar(df.index + width*1.5, df['Over All Time'], width)
-    plt.xticks(np.arange(min(df.index), max(df.index) + 1, 1))
-    plt.xlabel('Redistribution')
-    plt.ylabel('Gain/Loss ($)')
-    plt.legend(['15 days', '30 days', '280 days', 'Over All Time'])
-    plt.savefig("redistribution.png", bbox_inches='tight', pad_inches=0)
-    plt.show()
+    fig = go.Figure()
+    for col in df.columns:
+        fig.add_trace(go.Bar(x=df[col].index, y=df[col].values, name=col))
+    fig.update_xaxes(title_text="Gains/Losses ($ USD)",
+                     showline=True, mirror=True, linewidth=1, linecolor='black',
+                     zeroline=False, zerolinewidth=1, zerolinecolor='lightgrey',
+                     showgrid=False, gridwidth=1, gridcolor='lightgrey')
+    fig.update_yaxes(title_text="Gains/Losses ($ USD)",
+                     showline=True, mirror=True, linewidth=1, linecolor='black',
+                     zeroline=True, zerolinewidth=2, zerolinecolor='grey',
+                     showgrid=True, gridwidth=1, gridcolor='lightgrey')
+    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
+                      font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
+                      margin_l=20, margin_r=20, margin_t=20, margin_b=20,
+                      xaxis=dict(tickmode='linear', tick0=1, dtick=1,))
+
+    try:
+        fig.write_image('redistribution.png', height=700, width=900, engine='kaleido')
+    except TypeError:
+        print('Could not write to static file')
+    fig.write_html('redistribution.html')
+    fig.show()
 
 
 def gain_loss_whole_month(current_data):
@@ -192,11 +199,16 @@ def main():
     prices_history, contribs, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
     plot_history(prices_history)
     plot_history(prices_history)
-    print("Total fund value:  $%.2f" % current_balance)
+    print("Total fund value: \t\t\t  $%.2f" % current_balance)
     my_input = np.sum(contribs['Traditional']) + np.sum(contribs['Roth'])
     all_input = np.sum(contribs['Total'])
-    print('My Gain: \t\t$%.2f' % (current_balance - my_input))
-    print('Total Gain: \t$%.2f' % (current_balance - all_input))
+    print('Gain on my raw contribution:   $%.2f' % (current_balance - my_input))
+    print('Gain on total contribution:    $%.2f' % (current_balance - all_input))
+    print('Current shares')
+    for i in range(len(current_shares)):
+        if current_shares[i] > 0.001:
+            print(current_fund_value.axes[0][i] + ': %.4f' % current_shares[i] + '    $%.4f' % current_fund_value[i] +
+                  '    %.2f%%' % (100*current_fund_value[i]/current_balance))
 
     # Test different distributions to see the possible gains/losses in switching to them, using the number code:
     # 7  = L 2055
@@ -207,7 +219,7 @@ def main():
     # 12 = C FUND
     # 13 = S FUND
     # 14 = I FUND
-    redistribution = np.zeros(([10, 15]))
+    redistribution = np.zeros(([9, 15]))
     redistribution[0, 14] = 1
     redistribution[1, 13] = 1
     redistribution[2, 12] = 1
