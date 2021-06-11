@@ -90,8 +90,10 @@ def plot_history(data):
 
 
 def plot_my_history(share_history, contrib_shares, contrib_dollars):
-    """Plot the share price history data from 2014 to current and just over the past year
-    :param data: share price history
+    """Plot personal contributions and fund value over time.
+    :param share_history: share price history
+    :param contrib_shares: contribution in share amounts
+    :param contrib_dollars: contribution in dollar amount
     :return: write and save plots
     """
     color = ['royalblue', 'crimson', 'mediumseagreen', 'mediumpurple', 'darkorange', 'turquoise', 'deeppink', 'gold',
@@ -138,7 +140,6 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
                       font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
                       margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
-    fig.show()
     try:
         fig.write_image('my_fund_value.png', height=700, width=900, engine='kaleido')
     except TypeError:
