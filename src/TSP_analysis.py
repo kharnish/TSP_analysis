@@ -19,26 +19,26 @@ def import_data():
              {Dataframe} contribution history in shares, {ndarray} total shares owned,
              {Series} current dollar value per fund, {float} current total balance
     """
-    current_data = pd.read_csv('share_prices.csv')
-    current_data = current_data.set_index(['Date'])
-    current_data.index = pd.to_datetime(current_data.index, format='%m/%d/%Y', infer_datetime_format=True)
+    current_share_prices = pd.read_csv('share_prices.csv')
+    current_share_prices = current_share_prices.set_index(['Date'])
+    current_share_prices.index = pd.to_datetime(current_share_prices.index, format='%m/%d/%Y', infer_datetime_format=True)
 
     contrib = pd.read_csv('contributions.csv')
     contrib = contrib.set_index(['Date'])
     contrib.index = pd.to_datetime(contrib.index, format='%m/%d/%Y', infer_datetime_format=True)
-    contributions = contrib[['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total']]
-    shares = contrib.drop(columns=['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total'])
-    concat = pd.concat([current_data, shares])
+    contribs_dollars = contrib[['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total']]
+    contribs_shares = contrib.drop(columns=['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total'])
+    concat = pd.concat([current_share_prices, contribs_shares])
 
     current_shares = []
-    for account in shares:
-        current_shares.append(sum(shares[account]))
+    for account in contribs_shares:
+        current_shares.append(sum(contribs_shares[account]))
     current_shares = np.array(current_shares)
-    current_fund_value = current_shares * current_data.iloc[0]
-    current_balance = sum(current_fund_value)
-    current_distribution = current_fund_value / current_balance
+    current_dollars = current_shares * current_share_prices.iloc[0]
+    balance_dollars = sum(current_dollars)
+    current_distribution = current_dollars / balance_dollars
 
-    return current_data, contributions, shares, current_shares, current_fund_value, current_balance
+    return current_share_prices, contribs_dollars, contribs_shares, current_shares, current_dollars, balance_dollars
 
 
 def plot_history(data):
@@ -86,6 +86,64 @@ def plot_history(data):
     except TypeError:
         print('Could not write to static file')
     fig.write_html('share_prices_past_year.html')
+    fig.show()
+
+
+def plot_my_history(share_history, contrib_shares, contrib_dollars):
+    """Plot the share price history data from 2014 to current and just over the past year
+    :param data: share price history
+    :return: write and save plots
+    """
+    color = ['royalblue', 'crimson', 'mediumseagreen', 'mediumpurple', 'darkorange', 'turquoise', 'deeppink', 'gold',
+             'lawngreen', 'sienna']
+    fig = go.Figure()
+    for i in range(len(contrib_shares)):
+        contrib_value = contrib_shares.iloc[i] * share_history.iloc[i]
+        contrib_value['Total Value'] = contrib_value.sum()
+        contrib_value['Total Contribution'] = contrib_dollars.iloc[i]['Total']
+        temp_df = contrib_value.to_frame().transpose()
+        temp_df['Date'] = [contrib_shares.index.values[i]]
+        temp_df = temp_df.set_index('Date', drop=True)
+        try:
+            df_contrib = pd.concat([df_contrib, temp_df])
+            temp2 = df_compound.iloc[i-1] + contrib_value
+            temp2 = temp2.to_frame().transpose()
+            temp2['Date'] = [contrib_shares.index.values[i]]
+            temp2 = temp2.set_index('Date', drop=True)
+            df_compound = pd.concat([df_compound, temp2])
+        except UnboundLocalError:
+            df_contrib = temp_df
+            df_compound = temp_df
+
+    # Plot fund value
+    fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Total Value'], name='Total Value',
+                             mode='lines+markers', line=dict(color=color[0], width=2)))
+    fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Total Contribution'], name='Total Contribution',
+                             mode='lines+markers', line=dict(color=color[1], width=2)))
+    i = 2
+    for col in df_compound.columns:
+        if max(df_compound[col]) > 0 and col != 'Total Value' and col != 'Total Contribution':
+            fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound[col], mode='lines', name=col,
+                                     line=dict(color=color[i], width=2)))
+            i += 1
+
+    fig.update_xaxes(title_text="Time",
+                     showline=True, mirror=True, linewidth=1, linecolor='black',
+                     zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
+                     showgrid=True, gridwidth=1, gridcolor='lightgrey')
+    fig.update_yaxes(title_text="Value ($ USD)",
+                     showline=True,  mirror=True, linewidth=1, linecolor='black',
+                     zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
+                     showgrid=True, gridwidth=1, gridcolor='lightgrey')
+    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+                      font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
+                      margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
+    fig.show()
+    try:
+        fig.write_image('my_fund_value.png', height=700, width=900, engine='kaleido')
+    except TypeError:
+        print('Could not write to static file')
+    fig.write_html('my_fund_value.html')
     fig.show()
 
 
@@ -165,7 +223,8 @@ def plot_what_if(df):
 def gain_loss_whole_month(current_data):
     """ Calculate monthly gains/losses of each fund over all years. """
     months = current_data.groupby(pd.Grouper(freq='MS'))
-    losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                                                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     for mo in months:
         # Per month per year, subtract final value from starting value
         diff = (mo[1].iloc[-1] - mo[1].iloc[0]).rename(mo[0])
@@ -180,7 +239,8 @@ def gain_loss_whole_month(current_data):
 def gain_loss_month_daily(current_data):
     """ Calculate monthly sum of daily gains/losses of each fund over all years. """
     months = current_data.groupby(pd.Grouper(freq='MS'))
-    losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    losses_monthly = pd.DataFrame(0, columns=current_data.columns, index=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                                                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     for mo in months:
         # Per month per year, sum daily gains/losses
         monthly_sum = np.zeros((mo[1].shape[1],))
@@ -196,19 +256,20 @@ def gain_loss_month_daily(current_data):
 
 
 def main():
-    prices_history, contribs, contrib_shares, current_shares, current_fund_value, current_balance = import_data()
+    prices_history, contrib_dollars, contrib_shares, current_shares, current_dollars, current_balance = import_data()
     plot_history(prices_history)
     plot_history(prices_history)
+    plot_my_history(prices_history, contrib_shares, contrib_dollars)
     print("Total fund value: \t\t\t  $%.2f" % current_balance)
-    my_input = np.sum(contribs['Traditional']) + np.sum(contribs['Roth'])
-    all_input = np.sum(contribs['Total'])
+    my_input = np.sum(contrib_dollars['Traditional']) + np.sum(contrib_dollars['Roth'])
+    all_input = np.sum(contrib_dollars['Total'])
     print('Gain on my raw contribution:   $%.2f' % (current_balance - my_input))
     print('Gain on total contribution:    $%.2f' % (current_balance - all_input))
     print('Current shares')
     for i in range(len(current_shares)):
         if current_shares[i] > 0.001:
-            print(current_fund_value.axes[0][i] + ': %.4f' % current_shares[i] + '    $%.4f' % current_fund_value[i] +
-                  '    %.2f%%' % (100*current_fund_value[i]/current_balance))
+            print(current_dollars.axes[0][i] + ': %.4f' % current_shares[i] + '    $%.4f' % current_dollars[i] +
+                  '    %.2f%%' % (100*current_dollars[i]/current_balance))
 
     # Test different distributions to see the possible gains/losses in switching to them, using the number code:
     # 7  = L 2055
