@@ -11,6 +11,7 @@ See personal TSP information at https://www.tsp.gov/
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def import_data():
@@ -65,6 +66,7 @@ def plot_history(data):
     except TypeError:
         print('Could not write to static file')
     fig.write_html('share_prices_all_time.html')
+    fig.show()
 
     recent = data[:data.first_valid_index() - pd.Timedelta(weeks=52)]
     fig = go.Figure()
@@ -98,11 +100,11 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
     """
     color = ['royalblue', 'crimson', 'mediumseagreen', 'mediumpurple', 'darkorange', 'turquoise', 'deeppink', 'gold',
              'lawngreen', 'sienna']
-    fig = go.Figure()
     for i in range(len(contrib_shares)):
         contrib_value = contrib_shares.iloc[i] * share_history.iloc[i]
         contrib_value['Total Value'] = contrib_value.sum()
         contrib_value['Total Contribution'] = contrib_dollars.iloc[i]['Total']
+        contrib_value['Fund Gain'] = contrib_value['Total Value'] - contrib_value['Total Contribution']
         temp_df = contrib_value.to_frame().transpose()
         temp_df['Date'] = [contrib_shares.index.values[i]]
         temp_df = temp_df.set_index('Date', drop=True)
@@ -118,23 +120,31 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
             df_compound = temp_df
 
     # Plot fund value
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Total Value'], name='Total Value',
-                             mode='lines+markers', line=dict(color=color[0], width=2)))
+                             mode='lines+markers', line=dict(color=color[0], width=2)), secondary_y=False,)
     fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Total Contribution'], name='Total Contribution',
-                             mode='lines+markers', line=dict(color=color[1], width=2)))
+                             mode='lines+markers', line=dict(color=color[1], width=2)), secondary_y=False,)
+    fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Fund Gain'], name='Fund Gain',  # fill='tozeroy',
+                             mode='lines', line=dict(color=color[7], width=2)), secondary_y=True, )
     i = 2
     for col in df_compound.columns:
-        if max(df_compound[col]) > 0 and col != 'Total Value' and col != 'Total Contribution':
+        if max(df_compound[col]) > 0 and col != 'Total Value' and col != 'Total Contribution' and col != 'Fund Gain':
             fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound[col], mode='lines', name=col,
-                                     line=dict(color=color[i], width=2)))
+                                     line=dict(color=color[i], width=2)), secondary_y=False,)
             i += 1
+
 
     fig.update_xaxes(title_text="Time",
                      showline=True, mirror=True, linewidth=1, linecolor='black',
                      zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
                      showgrid=True, gridwidth=1, gridcolor='lightgrey')
-    fig.update_yaxes(title_text="Value ($ USD)",
+    fig.update_yaxes(title_text="Value ($ USD)", secondary_y=False, rangemode='tozero',
                      showline=True,  mirror=True, linewidth=1, linecolor='black',
+                     zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
+                     showgrid=True, gridwidth=1, gridcolor='lightgrey')
+    fig.update_yaxes(title_text="Fund Gains ($ USD)", secondary_y=True, rangemode='tozero',
+                     showline=True, mirror=True, linewidth=1, linecolor='black',
                      zeroline=True, zerolinewidth=1, zerolinecolor='lightgrey',
                      showgrid=True, gridwidth=1, gridcolor='lightgrey')
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
@@ -258,7 +268,6 @@ def gain_loss_month_daily(current_data):
 
 def main():
     prices_history, contrib_dollars, contrib_shares, current_shares, current_dollars, current_balance = import_data()
-    plot_history(prices_history)
     plot_history(prices_history)
     plot_my_history(prices_history, contrib_shares, contrib_dollars)
     print("Total fund value: \t\t\t  $%.2f" % current_balance)
