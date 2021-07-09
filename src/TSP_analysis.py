@@ -100,6 +100,7 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
     """
     color = ['royalblue', 'crimson', 'mediumseagreen', 'mediumpurple', 'darkorange', 'turquoise', 'deeppink', 'gold',
              'lawngreen', 'sienna']
+    # TODO: make this do the math with shares, not values
     for i in range(len(contrib_shares)):
         contrib_value = contrib_shares.iloc[i] * share_history.iloc[i]
         contrib_value['Total Value'] = contrib_value.sum()
@@ -133,7 +134,6 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
             fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound[col], mode='lines', name=col,
                                      line=dict(color=color[i], width=2)), secondary_y=False,)
             i += 1
-
 
     fig.update_xaxes(title_text="Time",
                      showline=True, mirror=True, linewidth=1, linecolor='black',
@@ -268,7 +268,7 @@ def gain_loss_month_daily(current_data):
 
 def main():
     prices_history, contrib_dollars, contrib_shares, current_shares, current_dollars, current_balance = import_data()
-    plot_history(prices_history)
+    # plot_history(prices_history)
     plot_my_history(prices_history, contrib_shares, contrib_dollars)
     print("Total fund value: \t\t\t  $%.2f" % current_balance)
     my_input = np.sum(contrib_dollars['Traditional']) + np.sum(contrib_dollars['Roth'])
