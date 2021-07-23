@@ -268,7 +268,7 @@ def gain_loss_month_daily(current_data):
 
 def main():
     prices_history, contrib_dollars, contrib_shares, current_shares, current_dollars, current_balance = import_data()
-    # plot_history(prices_history)
+    plot_history(prices_history)
     plot_my_history(prices_history, contrib_shares, contrib_dollars)
     print("Total fund value: \t\t\t  $%.2f" % current_balance)
     my_input = np.sum(contrib_dollars['Traditional']) + np.sum(contrib_dollars['Roth'])
