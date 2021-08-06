@@ -100,38 +100,48 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
     """
     color = ['royalblue', 'crimson', 'mediumseagreen', 'mediumpurple', 'darkorange', 'turquoise', 'deeppink', 'gold',
              'lawngreen', 'sienna']
-    # TODO: make this do the math with shares, not values
+
     for i in range(len(contrib_shares)):
-        contrib_value = contrib_shares.iloc[i] * share_history.iloc[i]
+        # Concatenate share values
+        try:
+            temp_df = contrib_shares_compound.iloc[i - 1] + contrib_shares.iloc[i]
+            temp_df = temp_df.to_frame().transpose()
+            temp_df['Date'] = [contrib_shares.index.values[i]]
+            temp_df = temp_df.set_index('Date', drop=True)
+            contrib_shares_compound = pd.concat([contrib_shares_compound, temp_df])
+        except UnboundLocalError:
+            contrib_shares_compound = contrib_shares.iloc[i].to_frame().transpose()
+
+        # Convert shares to dollar values
+        contrib_value = contrib_shares_compound.iloc[i] * share_history.iloc[i]
         contrib_value['Total Value'] = contrib_value.sum()
-        contrib_value['Total Contribution'] = contrib_dollars.iloc[i]['Total']
+        try:
+            contrib_value['Total Contribution'] = contrib_dollars.iloc[i]['Total'] + contrib_dollars_compound.iloc[i - 1]['Total Contribution']
+        except UnboundLocalError:
+            contrib_value['Total Contribution'] = contrib_dollars.iloc[i]['Total']
         contrib_value['Fund Gain'] = contrib_value['Total Value'] - contrib_value['Total Contribution']
         temp_df = contrib_value.to_frame().transpose()
         temp_df['Date'] = [contrib_shares.index.values[i]]
         temp_df = temp_df.set_index('Date', drop=True)
         try:
-            df_contrib = pd.concat([df_contrib, temp_df])
-            temp2 = df_compound.iloc[i-1] + contrib_value
-            temp2 = temp2.to_frame().transpose()
-            temp2['Date'] = [contrib_shares.index.values[i]]
-            temp2 = temp2.set_index('Date', drop=True)
-            df_compound = pd.concat([df_compound, temp2])
+            contrib_dollars_compound = pd.concat([contrib_dollars_compound, temp_df])
         except UnboundLocalError:
-            df_contrib = temp_df
-            df_compound = temp_df
+            contrib_dollars_compound = temp_df
 
     # Plot fund value
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Total Value'], name='Total Value',
-                             mode='lines+markers', line=dict(color=color[0], width=2)), secondary_y=False,)
-    fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Total Contribution'], name='Total Contribution',
-                             mode='lines+markers', line=dict(color=color[1], width=2)), secondary_y=False,)
-    fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound['Fund Gain'], name='Fund Gain',  # fill='tozeroy',
-                             mode='lines', line=dict(color=color[7], width=2)), secondary_y=True, )
-    i = 2
-    for col in df_compound.columns:
-        if max(df_compound[col]) > 0 and col != 'Total Value' and col != 'Total Contribution' and col != 'Fund Gain':
-            fig.add_trace(go.Scatter(x=df_compound.index, y=df_compound[col], mode='lines', name=col,
+    fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound['Total Value'],
+                             name='Total Value', mode='lines+markers', line=dict(color=color[0], width=2)),
+                  secondary_y=False,)
+    fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound['Total Contribution'],
+                             name='Total Contribution', mode='lines+markers', line=dict(color=color[1], width=2)),
+                  secondary_y=False,)
+    fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound['Fund Gain'], # fill='tozeroy',
+                             name='Fund Gain', mode='lines', line=dict(color=color[2], width=2)), secondary_y=True, )
+    i = 3
+    for col in contrib_dollars_compound.columns:
+        if max(contrib_dollars_compound[col]) > 0 and col != 'Total Value' and col != 'Total Contribution' and col != 'Fund Gain':
+            fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound[col], mode='lines', name=col,
                                      line=dict(color=color[i], width=2)), secondary_y=False,)
             i += 1
 
@@ -150,10 +160,8 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
                       font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
                       margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
-    try:
-        fig.write_image('my_fund_value.png', height=700, width=900, engine='kaleido')
-    except TypeError:
-        print('Could not write to static file')
+
+    fig.write_image('my_fund_value.png', height=700, width=900, engine='kaleido')
     fig.write_html('my_fund_value.html')
     fig.show()
 
