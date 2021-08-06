@@ -2,7 +2,7 @@
 
 A little script to help determine the best way to invest your TSP funds or just keep track of your investments.
 
-#### Getting Started
+### Getting Started
 If you've never used Python before, start by downloading [Miniconda](https://docs.conda.io/en/latest/miniconda.html) and [PyCharm](https://www.jetbrains.com/pycharm/download/#section=windows). They also have a good tutorial [here](https://www.jetbrains.com/help/pycharm/quick-start-guide.html#create) on cloning this repo and setting it up as a project.
 
 Before you run the code:
@@ -12,4 +12,4 @@ Before you run the code:
 
 Happy investing!
 
-*I am not an expert and this is just a tool; use at your own discression.*
+*I am not an expert and this is just a tool; use at your own discretion.*
