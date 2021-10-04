@@ -17,9 +17,15 @@ from plotly.subplots import make_subplots
 
 def import_data():
     """Import share price and contribution history and format into dataframes.
-    :return: {Dataframe} share price history, {Dataframe} contribution history in dollars,
-             {Dataframe} contribution history in shares, {ndarray} total shares owned,
-             {Series} current dollar value per fund, {float} current total balance
+
+    Returns:
+        Dataframe: share price history
+        Dataframe: contribution history in dollars
+        Dataframe: contribution history in shares
+        ndarray: total shares owned
+        Series: current dollar value per fund
+        float: current total balance
+
     """
     current_share_prices = pd.read_csv(join('resources', 'share_prices.csv'))
     current_share_prices = current_share_prices.set_index(['Date'])
@@ -45,8 +51,12 @@ def import_data():
 
 def plot_history(data):
     """Plot the share price history data from 2014 to current and just over the past year
-    :param data: share price history
-    :return: write and save plots
+
+    Args:
+        data: share price history
+
+    Returns:
+         writes and saves plots
     """
     fig = go.Figure()
     for col in data.columns:
@@ -90,10 +100,14 @@ def plot_history(data):
 
 def plot_my_history(share_history, contrib_shares, contrib_dollars):
     """Plot personal contributions and fund value over time.
-    :param share_history: share price history
-    :param contrib_shares: contribution in share amounts
-    :param contrib_dollars: contribution in dollar amount
-    :return: write and save plots
+    Args:
+        share_history: share price history
+        contrib_shares: contribution in share amounts
+        contrib_dollars: contribution in dollar amount
+
+    Returns:
+        writes and saves plots
+
     """
     color = ['royalblue', 'crimson', 'mediumseagreen', 'mediumpurple', 'darkorange', 'turquoise', 'deeppink', 'gold',
              'lawngreen', 'sienna']
@@ -197,6 +211,18 @@ def calculate_futures(current_balance, today_shares_owned, history, range_days, 
 
 
 def find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history):
+    """
+
+    Args:
+        ranges:
+        redistribution:
+        current_balance:
+        current_shares:
+        prices_history:
+
+    Returns:
+
+    """
     df = pd.DataFrame(columns=['Redistribution', str(ranges[0])+' days', str(ranges[1])+' days', str(ranges[2])+' days', 'Over All Time'])
     for i in range(len(redistribution)):
         redis = redistribution[i, :]
@@ -209,8 +235,11 @@ def find_what_if_redis(ranges, redistribution, current_balance, current_shares, 
 
 def plot_what_if(df):
     """ Plot the share price history data from 2014 to current.
-    :param df: dataframe of share price history
-    :return:
+    Args:
+        df (DataFrame): dataframe of share price history
+
+    Returns:
+
     """
     fig = go.Figure()
     for col in df.columns:
@@ -307,7 +336,7 @@ def main():
     ranges = [15, 30, 280, len(prices_history)]
     df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
     plot_what_if(df)
-    print('\n\"What-if\" Resistribution Gains and Losses')
+    print('\n\"What-if\" Redistribution Gains and Losses')
     print(df)
 
     gain_loss = gain_loss_whole_month(prices_history)
