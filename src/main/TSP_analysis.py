@@ -8,6 +8,7 @@ This file processes past TSP data to determine the best steps for your future fi
 Obtain most current share price CSV from https://www.tsp.gov/fund-performance/share-price-history/
 See personal TSP information at https://www.tsp.gov/
 """
+import datetime
 from os.path import join
 import numpy as np
 import pandas as pd
@@ -29,11 +30,11 @@ def import_data():
     """
     current_share_prices = pd.read_csv(join('resources', 'share_prices.csv'))
     current_share_prices = current_share_prices.set_index(['Date'])
-    current_share_prices.index = pd.to_datetime(current_share_prices.index, format='%m/%d/%Y', infer_datetime_format=True)
+    current_share_prices.index = pd.to_datetime(current_share_prices.index, format='%m/%d/%Y')
 
     contrib = pd.read_csv(join('resources', 'contributions.csv'))
     contrib = contrib.set_index(['Date'])
-    contrib.index = pd.to_datetime(contrib.index, format='%m/%d/%Y', infer_datetime_format=True)
+    contrib.index = pd.to_datetime(contrib.index, format='%m/%d/%Y')
     contribs_dollars = contrib[['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total']]
     contribs_shares = contrib.drop(columns=['Traditional', 'Roth', 'Automatic_1', 'Matching', 'Total'])
     concat = pd.concat([current_share_prices, contribs_shares])
@@ -73,8 +74,8 @@ def plot_history(data):
                       font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
                       margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
 
-    fig.write_image(join('..', 'docs', 'share_prices_all_time.png'), height=700, width=900, engine='kaleido')
-    fig.write_html(join('..', 'docs', 'share_prices_all_time.html'))
+    # fig.write_image(join('..', 'docs', 'share_prices_all_time.png'), height=700, width=900, engine='kaleido')
+    # fig.write_html(join('..', 'docs', 'share_prices_all_time.html'))
     fig.show()
 
     recent = data[:data.first_valid_index() - pd.Timedelta(weeks=52)]
@@ -93,9 +94,9 @@ def plot_history(data):
                       font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
                       margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
 
-    fig.write_image(join('..', 'docs', 'share_prices_past_year.png'), height=700, width=900, engine='kaleido')
-    fig.write_html(join('..', 'docs', 'share_prices_past_year.html'))
-    fig.show()
+    # fig.write_image(join('..', 'docs', 'share_prices_past_year.png'), height=700, width=900, engine='kaleido')
+    # fig.write_html(join('..', 'docs', 'share_prices_past_year.html'))
+    # fig.show()
 
 
 def plot_my_history(share_history, contrib_shares, contrib_dollars):
@@ -124,7 +125,7 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
             contrib_shares_compound = contrib_shares.iloc[i].to_frame().transpose()
 
         # Convert shares to dollar values
-        contrib_value = contrib_shares_compound.iloc[i] * share_history.iloc[i]
+        contrib_value = contrib_shares_compound.iloc[i] * share_history.loc[contrib_shares_compound.iloc[i].name]
         contrib_value['Total Value'] = contrib_value.sum()
         try:
             contrib_value['Total Contribution'] = contrib_dollars.iloc[i]['Total'] + contrib_dollars_compound.iloc[i - 1]['Total Contribution']
@@ -139,6 +140,10 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
         except UnboundLocalError:
             contrib_dollars_compound = temp_df
 
+    # Calculate my personal contribution
+    contrib_dollars['my_contrib'] = contrib_dollars['Traditional'] + contrib_dollars['Roth']
+    contrib_dollars['my_contrib_sum'] = contrib_dollars['my_contrib'].cumsum()
+
     # Plot fund value
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound['Total Value'],
@@ -147,9 +152,12 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
     fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound['Total Contribution'],
                              name='Total Contribution', mode='lines+markers', line=dict(color=color[1], width=2)),
                   secondary_y=False,)
+    fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars['my_contrib_sum'],
+                             name='My Contribution', mode='lines+markers', line=dict(color=color[2], width=2)),
+                  secondary_y=False,)
     fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound['Fund Gain'], # fill='tozeroy',
-                             name='Fund Gain', mode='lines', line=dict(color=color[2], width=2)), secondary_y=True, )
-    i = 3
+                             name='Fund Gain', mode='lines', line=dict(color=color[3], width=2)), secondary_y=True, )
+    i = 4
     for col in contrib_dollars_compound.columns:
         if max(contrib_dollars_compound[col]) > 0 and col != 'Total Value' and col != 'Total Contribution' and col != 'Fund Gain':
             fig.add_trace(go.Scatter(x=contrib_dollars_compound.index, y=contrib_dollars_compound[col], mode='lines', name=col,
@@ -172,8 +180,8 @@ def plot_my_history(share_history, contrib_shares, contrib_dollars):
                       font=dict(family='Times New Roman', size=15), plot_bgcolor='rgba(0,0,0,0)',
                       margin_l=20, margin_r=20, margin_t=20, margin_b=20,)
 
-    fig.write_image(join('..', 'docs', 'my_fund_value.png'), height=700, width=900, engine='kaleido')
-    fig.write_html(join('..', 'docs', 'my_fund_value.html'))
+    # fig.write_image(join('..', 'docs', 'my_fund_value.png'), height=700, width=900, engine='kaleido')
+    # fig.write_html(join('..', 'docs', 'my_fund_value.html'))
     fig.show()
 
 
@@ -258,8 +266,8 @@ def plot_what_if(df):
                       xaxis=dict(tickmode='linear', tick0=1, dtick=1,))
 
 
-    fig.write_image(join('..', 'docs', 'redistribution.png'), height=700, width=900, engine='kaleido')
-    fig.write_html(join('..', 'docs', 'redistribution.html'))
+    # fig.write_image(join('..', 'docs', 'redistribution.png'), height=700, width=900, engine='kaleido')
+    # fig.write_html(join('..', 'docs', 'redistribution.html'))
     fig.show()
 
 
@@ -299,52 +307,68 @@ def gain_loss_month_daily(current_data):
 
 
 def main():
+    # Do all the importing and calculations
     prices_history, contrib_dollars, contrib_shares, current_shares, current_dollars, current_balance = import_data()
+
+    # Plot share performance over all time
     plot_history(prices_history)
+
+    # Plot your personal performance over time
     plot_my_history(prices_history, contrib_shares, contrib_dollars)
-    print("Total fund value: \t\t\t  $%.2f" % current_balance)
+
+    # Output your current status
+    print(f"Total fund value:             ${current_balance:,.2f}")
     my_input = np.sum(contrib_dollars['Traditional']) + np.sum(contrib_dollars['Roth'])
     all_input = np.sum(contrib_dollars['Total'])
-    print('Gain on my raw contribution:   $%.2f' % (current_balance - my_input))
-    print('Gain on total contribution:    $%.2f' % (current_balance - all_input))
-    print('Current shares')
+    print(f"Gain on my raw contribution:  ${current_balance - my_input:,.2f}")
+    print(f"Gain on total contribution:   ${current_balance - all_input:,.2f}")
+
+    print("\nCurrent shares")
     for i in range(len(current_shares)):
         if current_shares[i] > 0.001:
-            print(current_dollars.axes[0][i] + ': %.4f' % current_shares[i] + '    $%.4f' % current_dollars[i] +
-                  '    %.2f%%' % (100*current_dollars[i]/current_balance))
+            print(f"  {current_dollars.axes[0][i]}: {current_shares[i]:.4f}    ${current_dollars.iloc[i]:,.2f}    "
+                  f"{100*current_dollars.iloc[i]/current_balance:.2f}%")
 
-    # Test different distributions to see the possible gains/losses in switching to them, using the number code:
-    # 7  = L 2055
-    # 8  = L 2060
-    # 9  = L 2065
-    # 10 = G FUND
-    # 11 = F FUND
-    # 12 = C FUND
-    # 13 = S FUND
-    # 14 = I FUND
-    redistribution = np.zeros(([9, 15]))
-    redistribution[0, 14] = 1
-    redistribution[1, 13] = 1
-    redistribution[2, 12] = 1
-    redistribution[3, 9] = 1
-    redistribution[4, 8] = 1
-    redistribution[5, 7] = 1
-    redistribution[6, 12:14] = 1/3
-    redistribution[7, 12], redistribution[7, 14] = 0.5, 0.5
-    redistribution[8, 12:13] = 0.5
+    # See how much value you'll have in a future year (for example, when you turn 25, 30, 40, 60)
+    future_year = 2027
+    time_to_future = datetime.datetime(year=future_year, month=1, day=1) - datetime.datetime.now()
+    last_contrib = contrib_dollars.iloc[-1]['Total']
+    number_of_contribs = 2 * time_to_future.days/30
+    value_2027 = all_input + number_of_contribs * last_contrib
+    print(f"\nEstimated value in {future_year} from only contributions (no inflation): ${value_2027:,.2f}")
 
-    ranges = [15, 30, 280, len(prices_history)]
-    df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
-    plot_what_if(df)
-    print('\n\"What-if\" Redistribution Gains and Losses')
-    print(df)
-
-    gain_loss = gain_loss_whole_month(prices_history)
-    print('\nWhole Month Monthly Losses')
-    print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
-    gain_loss2 = gain_loss_month_daily(prices_history)
-    print('\nDaily Sum Monthly Losses')
-    print(gain_loss2[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    # # Test different distributions to see the possible gains/losses in switching to them, using the number code:
+    # # 7  = L 2055
+    # # 8  = L 2060
+    # # 9  = L 2065
+    # # 10 = G FUND
+    # # 11 = F FUND
+    # # 12 = C FUND
+    # # 13 = S FUND
+    # # 14 = I FUND
+    # redistribution = np.zeros(([9, 15]))
+    # redistribution[0, 14] = 1
+    # redistribution[1, 13] = 1
+    # redistribution[2, 12] = 1
+    # redistribution[3, 9] = 1
+    # redistribution[4, 8] = 1
+    # redistribution[5, 7] = 1
+    # redistribution[6, 12:14] = 1/3
+    # redistribution[7, 12], redistribution[7, 14] = 0.5, 0.5
+    # redistribution[8, 12:13] = 0.5
+    #
+    # ranges = [15, 30, 280, len(prices_history)]
+    # df = find_what_if_redis(ranges, redistribution, current_balance, current_shares, prices_history)
+    # plot_what_if(df)
+    # print('\n\"What-if\" Redistribution Gains and Losses')
+    # print(df)
+    #
+    # gain_loss = gain_loss_whole_month(prices_history)
+    # print('\nWhole Month Monthly Losses')
+    # print(gain_loss[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
+    # gain_loss2 = gain_loss_month_daily(prices_history)
+    # print('\nDaily Sum Monthly Losses')
+    # print(gain_loss2[['C FUND', 'S FUND', 'I FUND', 'F FUND']])
 
 
 if __name__ == '__main__':
