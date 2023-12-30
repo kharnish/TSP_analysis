@@ -2,6 +2,54 @@ from os.path import join
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+import time
+from dotenv import load_dotenv
+import os
+
+
+def grab_contributions():
+    # Import secret from .env file
+    load_dotenv()
+    user = os.getenv("TSP_USER")
+    password = os.getenv("TSP_PASS")
+    mfa = os.getenv("TSP_MFA")
+
+    # Load TSP webpage
+    url = 'https://www.tsp.gov/login/'
+    driver = webdriver.Chrome()
+    driver.get(url)
+    time.sleep(3)
+
+    # Log in to TSP
+    driver.find_element(by=By.XPATH, value="//button[text()='Acknowledge']").click()
+    driver.find_element(by=By.NAME, value="username").send_keys(user)
+    driver.find_element(by=By.NAME, value="password").send_keys(password)
+    driver.find_element(by=By.ID, value="okta-signin-submit").click()
+    time.sleep(3)
+    driver.find_element(by=By.CLASS_NAME, value="icon-dm").click()
+    driver.find_element(by=By.XPATH, value="//a[text()='Security Question']").click()
+    time.sleep(1)
+    driver.find_element(by=By.NAME, value="answer").send_keys(mfa)
+    time.sleep(1)
+    driver.find_element(by=By.XPATH, value="//*[@class='button button-primary']").click()
+    time.sleep(10)
+
+    # Get contributions
+    try:  # TODO get it to work regardless of window size
+        driver.find_element(by=By.XPATH, value="//a[text()='Contributions ']").click()
+        time.sleep(1)
+    except:
+        driver.find_element(by=By.ID, value="mob-menu-icon']").click()
+        driver.find_element(by=By.XPATH, value="//a[text()='Contributions']").click()
+        time.sleep(1)
+
+    driver.find_element(by=By.XPATH, value="//a[text()='Account Activity']").click()
+    time.sleep(1)
+    driver.find_element(by=By.XPATH, value="//span[text()='Download']").click()
+    time.sleep(1)
+
+
+    driver.close()
 
 
 def import_contributions():
@@ -56,4 +104,5 @@ def scrape_tsp_performance():
 
 if __name__ == '__main__':
     # import_contributions()
-    scrape_tsp_performance()
+    # scrape_tsp_performance()
+    grab_contributions()
