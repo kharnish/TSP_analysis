@@ -1,74 +1,115 @@
+from dotenv import load_dotenv
+import os
 from os.path import join
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 import time
-from dotenv import load_dotenv
-import os
 
 
-def scrape_contributions():
-    """Download contributions CSV from the year to date
+class TSPInterface:
+    def __init__(self, download_dir=os.getcwd()):
+        self.download_dir = download_dir
+        self.driver = None
+        self.wait = None
 
-    :return:
-    """
-    # TODO Make it click the Contributions tab
+    @staticmethod
+    def load_driver(download_dir):
+        """Load TSP web page
 
-    # Import secret from .env file
-    load_dotenv()
-    user = os.getenv("TSP_USER")
-    password = os.getenv("TSP_PASS")
-    mfa = os.getenv("TSP_MFA")
+        :param download_dir: Default download directory
+        """
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_experimental_option("prefs", {"download.default_directory": download_dir})
+        driver = webdriver.Chrome(options=chrome_options)
+        return driver, WebDriverWait(driver, 20)
 
-    # Load TSP webpage
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_experimental_option("prefs", {"download.default_directory": os.getcwd()})
-    driver = webdriver.Chrome(options=chrome_options)
-    url = 'https://www.tsp.gov/login/'
-    driver.get(url)
-    time.sleep(3)
+    def login(self):
+        """Log in to TSP"""
+        # Load secret login strings
+        load_dotenv()
+        user = os.getenv("TSP_USER")
+        password = os.getenv("TSP_PASS")
+        mfa_key = os.getenv("TSP_MFA")
 
-    # Log in to TSP
-    driver.find_element(by=By.XPATH, value="//button[text()='Acknowledge']").click()
-    driver.find_element(by=By.NAME, value="username").send_keys(user)
-    driver.find_element(by=By.NAME, value="password").send_keys(password)
-    driver.find_element(by=By.ID, value="okta-signin-submit").click()
-    time.sleep(3)
-    driver.find_element(by=By.CLASS_NAME, value="icon-dm").click()
-    driver.find_element(by=By.XPATH, value="//a[text()='Security Question']").click()
-    time.sleep(1)
-    driver.find_element(by=By.NAME, value="answer").send_keys(mfa)
-    time.sleep(1)
-    driver.find_element(by=By.XPATH, value="//*[@class='button button-primary']").click()
-    time.sleep(15)
+        # Load login URL
+        url = 'https://www.tsp.gov/login/'
+        self.driver.get(url)
 
-    # Get contributions
-    # full_xpath = '/html/body/al-app/div[2]/app-page-host/div/al-primary-page/div/div/header/div/al-layout-header-wc/div/div/div/thrive-header-widget-wc/div/div/div[2]/div[1]/div[1]/div/ul/li[5]/span/a'
-    # driver.find_element(by=By.XPATH, value=full_xpath).click()
-    # driver.find_element(by=By.XPATH, value="//a[text()='Contributions']").click()
+        # Log in to TSP
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Acknowledge']"))).click()
+        self.driver.find_element(by=By.NAME, value="username").send_keys(user)
+        self.driver.find_element(by=By.NAME, value="password").send_keys(password)
+        self.driver.find_element(by=By.ID, value="okta-signin-submit").click()
+        self.wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "icon-dm"))).click()
+        self.driver.find_element(by=By.XPATH, value="//a[text()='Security Question']").click()
+        self.wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "password-with-toggle")))
+        self.driver.find_element(by=By.CLASS_NAME, value="password-with-toggle").send_keys(mfa_key)
+        time.sleep(2)
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@class='button button-primary']"))).click()
 
-    # TODO get it to work regardless of window size
-    #  options.add_argument("window-size=1200x600")
-    # try:
-    #     driver.find_element(by=By.ID, value="primary__3272f498_6961_431d_a2cb_848499a7113esptr58e0cd48_33a7_493c_a6f6_e46d599cca72").click()
-    #     # driver.find_element(by=By.XPATH, value="//a[text()='Contributions']").click()
-    #     # primary__3272f498_6961_431d_a2cb_848499a7113esptr58e0cd48_33a7_493c_a6f6_e46d599cca72
-    #     time.sleep(1)
-    # except:
-    #     driver.find_element(by=By.ID, value="mob-menu-icon']").click()
-    #     driver.find_element(by=By.XPATH, value="//a[text()='Contributions']").click()
-    #     time.sleep(1)
+    def scrape_contributions(self):
+        """Download contributions CSV from the year to date"""
+        # Instantiate driver
+        self.driver, self.wait = self.load_driver(self.download_dir)
 
-    driver.find_element(by=By.XPATH, value="//a[text()='Account Activity']").click()
-    time.sleep(2)
-    driver.find_element(by=By.XPATH, value="//span[text()='Download']").click()
-    time.sleep(1)
-    driver.find_element(by=By.XPATH, value="//button[@title='Download']").click()
-    time.sleep(3)
+        # Log in to TSP to get contributions
+        self.login()
 
-    # Import contribution CSV
-    import_contributions(os.path.join(os.getcwd(), 'InvestmentActivityDetail.csv'))
-    driver.close()
+        # Get contributions, waiting until page is fully loaded
+        # The full XPATH is inconvenient, but so far is the only thing that I've found to work
+        full_xpath = '/html/body/al-app/div[2]/app-page-host/div/al-primary-page/div/div/div/div/div[2]/div/worklife-' \
+                     'home/div/div[1]/worklife-datacard-container-wc/div/div/worklife-datacard-retirementsavings-wc/' \
+                     'worklife-datacard-template/section/div[4]/div[1]/div[2]/div[1]/div/a '
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, full_xpath))).click()
+
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Account Activity']"))).click()
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Download']"))).click()
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Download']"))).click()
+        time.sleep(5)
+
+        # Import contribution CSV
+        csv_path = os.path.join(self.download_dir, 'InvestmentActivityDetail.csv')
+        import_contributions(csv_path)
+        self.driver.close()
+        return csv_path
+
+    def scrape_tsp_performance(self):
+        """Scrape public TSP fund performance and append to personal Share_Prices.csv file"""
+        # Instantiate driver
+        self.driver, self.wait = self.load_driver(self.download_dir)
+
+        # Load fund performance url
+        url = 'https://www.tsp.gov/share-price-history/'
+        self.driver.get(url)
+
+        old_prices = pd.read_csv(os.path.join('resources', 'Share_Prices.csv'))
+
+        # TODO Made the input date based on the last gotten share price
+        # time.sleep(3)
+        # self.driver.find_element(by=By.CLASS_NAME, value="date-range form-control input active").click()
+        # self.driver.find_element(By.XPATH, "//input[@placeholder='Start Date..']").send_keys("2023-12-8")
+        # self.driver.find_element(By.XPATH, "//*[@class='date-range form-control input']").click()#.send_keys("2023-12-8")
+        # self.driver.find_element(by=By.ID, value="fundDateStart").click()#send_keys("2023-12-8")
+        # self.driver.find_element(by=By.CLASS_NAME, value="usa-button").click()
+
+        price_table = self.driver.find_element(by=By.ID, value="dynamic-share-price-table")
+
+        d = [i.split('$') for i in price_table.text.split('\n')]
+        cols = d[0][0][5:].split(' ')
+        cols = ['date'] + [(' ').join(cols[i:i + 2]) for i in range(0, len(cols), 2)]
+        df = pd.DataFrame(d[1:], columns=cols)
+        df['date'] = pd.to_datetime(df['date'])
+        for col in df.columns[1:]:
+            df[col] = df[col].astype('float')
+
+        # TODO add the updated prices and rewrite the table
+
+        df_to_add = df[df['date'] > old_prices.iloc(0)['date']]
+
+        self.driver.close()
 
 
 def import_contributions(tsp_investment_activity_path):
@@ -77,9 +118,7 @@ def import_contributions(tsp_investment_activity_path):
     contribution activity
 
     :param tsp_investment_activity_path:
-    :return:
     """
-
     contrib_file = pd.read_csv(join('resources', 'contributions.csv'))
     tsp_ia_file = pd.read_csv(tsp_investment_activity_path)
     ia_df = pd.DataFrame(columns=contrib_file.columns)
@@ -101,43 +140,9 @@ def import_contributions(tsp_investment_activity_path):
     pass
 
 
-def scrape_tsp_performance():
-    """
-    Scrape public TSP fund performance and append to personal Share_Prices.csv file
-
-    :return:
-    """
-    current_prices = pd.read_csv(os.path.join('resources', 'Share_Prices.csv'))
-
-    tsp_url = 'https://www.tsp.gov/share-price-history/'
-    driver = webdriver.Chrome()
-    driver.get(tsp_url)
-
-    # TODO Made the input date based on the last gotten share price
-    # driver.find_element(by=By.CLASS_NAME, value="date-range form-control input active").click()
-    # driver.find_element(by=By.ID, value="fundDateStart").send_value("value", "2023-12-8")
-    # driver.find_element(by=By.CLASS_NAME, value="usa-button").click()
-
-    price_table = driver.find_element(by=By.ID, value="dynamic-share-price-table")
-
-    d = [i.split('$') for i in price_table.text.split('\n')]
-    cols = d[0][0][5:].split(' ')
-    cols = ['date'] + [(' ').join(cols[i:i + 2]) for i in range(0, len(cols), 2)]
-    df = pd.DataFrame(d[1:], columns=cols)
-    df['date'] = pd.to_datetime(df['date'])
-    for col in df.columns[1:]:
-        df[col] = df[col].astype('float')
-
-    # TODO add the updated prices and rewrite the table
-
-    driver.close()
-
-    print('done')
-
-
 if __name__ == '__main__':
-    import_contributions(os.path.join(os.getcwd(), 'InvestmentActivityDetail.csv'))
+    tspi = TSPInterface()
+    # iad_path = tspi.scrape_contributions()
+    # import_contributions(iad_path)
 
-    # import_contributions()
-    # scrape_tsp_performance()
-    # grab_contributions()
+    tspi.scrape_tsp_performance()

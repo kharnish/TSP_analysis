@@ -1,6 +1,8 @@
 # Created by .ignore support plugin (hsz.mobi)
 
+# Specific to TSP Analysis
 src/main/resources/contributions.csv
+*InvestmentActivityDetail.csv
 
 ### Python template
 # Byte-compiled / optimized / DLL files
